@@ -67,6 +67,7 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
     def fit(self, X, y):
         super().fit(X, y)
         self.num_classes = len(np.unique(self.y_train))
+        assert 1 < self.num_classes <= self.max_num_classes, f"Number of classes must be between 1 and {self.max_num_classes}"
         
     def _predict_large_cls(self, X_train, X_test, y_train):
         num_digits = math.ceil(math.log(self.num_classes, self.max_num_classes))
@@ -110,7 +111,7 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
             
             pred = pred[..., :self.num_classes] / temperature
             pred = torch.nn.functional.softmax(pred, dim=-1)
-            return pred.squeeze().detach().cpu().numpy()
+            return pred.squeeze(1).detach().cpu().numpy()
         else:
             pred_list = []
             for b in range(math.ceil(len(self.X_test) / self.inf_batch_size)):
