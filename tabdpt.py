@@ -10,6 +10,7 @@ from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from tabdpt_model import TabDPTModel
 from utils import convert_to_torch_tensor, pad_x, FAISS, seed_everything
 
+
 class TabDPTEstimator(BaseEstimator):
     def __init__(self, path: str, mode: str, inf_batch_size: int, device: str):
         self.mode = mode

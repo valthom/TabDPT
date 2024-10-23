@@ -4,6 +4,7 @@ import random
 import os
 import faiss
 
+
 def maskmean(x, mask, dim):
     x = torch.where(mask, x, 0)
     return x.sum(dim=dim, keepdim=True) / mask.sum(dim=dim, keepdim=True)
