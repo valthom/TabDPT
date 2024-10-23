@@ -1,5 +1,16 @@
 # TabDPT: Scaling Tabular Foundation Models
 
+## Installation
+
+To run `TabDPT`, install the following packages:
+- `pytorch`
+- `numpy`
+- `scikit-learn`
+- `faiss`
+
+You need to also download the [weights below](#model-weights-download).
+
+
 ## Example Usage 1
 ```
 from sklearn.metrics import accuracy_score
