@@ -4,6 +4,7 @@ from torch.nn import TransformerEncoderLayer
 
 from utils import maskmean, maskstd, normalize_data, clip_outliers, seed_everything
 
+
 class TabDPTModel(nn.Module):
     def __init__(self, dropout: float, n_out: int, nhead: int, nhid: int, ninp: int, nlayers: int, norm_first: bool, num_features: int):
         super().__init__()
