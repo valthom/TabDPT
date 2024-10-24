@@ -68,7 +68,7 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
     def fit(self, X, y):
         super().fit(X, y)
         self.num_classes = len(np.unique(self.y_train))
-        assert 1 < self.num_classes <= self.max_num_classes, f"Number of classes must be between 1 and {self.max_num_classes}"
+        assert self.num_classes > 1, "Number of classes must be greater than 1"
         
     def _predict_large_cls(self, X_train, X_test, y_train):
         num_digits = math.ceil(math.log(self.num_classes, self.max_num_classes))
