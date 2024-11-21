@@ -158,7 +158,7 @@ class TabDPTRegressor(TabDPTEstimator, RegressorMixin):
     def __init__(self, path: str, inf_batch_size: int = 512, device: str = 'cuda:0'):
         super().__init__(path=path, mode='reg', inf_batch_size=inf_batch_size, device=device)
 
-    def predict(self, X: np.ndarray, context_size: int):
+    def predict(self, X: np.ndarray, context_size: int = 128):
         train_x, train_y, test_x = self._prepare_prediction(X)
         if context_size >= self.n_instances:
             X_train = pad_x(train_x[:, None, :], self.max_features).to(self.device)
@@ -174,7 +174,7 @@ class TabDPTRegressor(TabDPTEstimator, RegressorMixin):
                 task=self.mode,
             )
             
-            return pred.squeeze().detach().cpu().numpy() * y_stds + y_means
+            return (pred * y_stds + y_means).squeeze().detach().cpu().numpy()
         else:
             pred_list = []
             for b in range(math.ceil(len(self.X_test) / self.inf_batch_size)):
