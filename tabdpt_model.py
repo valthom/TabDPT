@@ -45,7 +45,6 @@ class TabDPTModel(nn.Module):
         self.cls_head = nn.Sequential(nn.Linear(ninp, nhid), nn.GELU(), nn.Linear(nhid, n_out))
         self.reg_head = nn.Sequential(nn.Linear(ninp, nhid), nn.GELU(), nn.Linear(nhid, 1))
         self.task2head = {'cls': self.cls_head, 'reg': self.reg_head}
-        # self.task2head = nn.ModuleDict({'cls': self.cls_head, 'reg': self.reg_head})
         self.transformer_encoder = nn.ModuleList(
             [
                 TransformerEncoderLayer(embed_dim=ninp, num_heads=nhead, ff_dim=nhid)
