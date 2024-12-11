@@ -51,3 +51,14 @@ print(r2_score(y_test, y_pred))
 ## Roadmap
 - [ ] Release other model sizes
 - [ ] Release training code
+
+
+## Update December 2024
+Support for bf16 precision and flash-attention is enabled and used by default. Added compilation option as well.
+
+### Example 
+```
+model = TabDPTClassifier(path='checkpoints/tabdpt_76M.ckpt', use_bf16=True, compile=False)
+```
+
+On very large datasets with large evaluation, faiss search might become the bottleneck. In that case an approximate index (IVF, HNSW) 
