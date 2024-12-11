@@ -2,7 +2,6 @@ import torch
 from torch.nn.attention import SDPBackend, sdpa_kernel
 import numpy as np
 import math
-from tqdm import trange
 import random
 from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
 from sklearn.utils.validation import check_is_fitted
@@ -132,7 +131,7 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
             return pred.squeeze(1).detach().cpu().numpy()
         else:
             pred_list = []
-            for b in trange(math.ceil(len(self.X_test) / self.inf_batch_size)):
+            for b in range(math.ceil(len(self.X_test) / self.inf_batch_size)):
                 start = b * self.inf_batch_size
                 end = min(len(self.X_test), (b + 1) * self.inf_batch_size)
 
