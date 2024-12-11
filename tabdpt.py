@@ -43,8 +43,8 @@ class TabDPTEstimator(BaseEstimator):
         self.y_train = y
         self.is_fitted_ = True
         if self.use_bf16:
+            # When using bf16, we will also use flash_attention by default
             self.autocast = torch.autocast(device_type='cuda', dtype=torch.bfloat16)
-
         if self.compile:
             self.model = torch.compile(self.model)
         

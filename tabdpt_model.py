@@ -22,7 +22,6 @@ class TransformerEncoderLayer(nn.Module):
         )
 
     def forward(self, x, eval_pos):
-        # x = x.transpose(0, 1)  # Transpose to (batch_size, seq_length, embed_dim)
         B, L, _ = x.size()
         h = self.attn_norm(x)
         q = self.q_proj(h)
@@ -34,7 +33,7 @@ class TransformerEncoderLayer(nn.Module):
         attn = self.out_proj(attn.reshape(B, L, self.embed_dim))
         x = x + attn
         x = x + self.ff(self.ff_norm(x))
-        return x#.transpose(0, 1)  # Transpose back to (seq_length, batch_size, embed_dim)
+        return x
 
 class TabDPTModel(nn.Module):
     def __init__(self, dropout: float, n_out: int, nhead: int, nhid: int, ninp: int, nlayers: int, norm_first: bool, num_features: int):
@@ -77,12 +76,12 @@ class TabDPTModel(nn.Module):
         train_x = x_src[:eval_pos] + y_src
         src = torch.cat([train_x, x_src[eval_pos:]], 0)
 
-        src = src.transpose(0, 1)
+        src = src.transpose(0, 1) # (B, L, d) shape
         for layer in self.transformer_encoder:
             src = layer(src, eval_pos)
         pred = self.task2head[task](src)
 
-        return pred[:, eval_pos:].transpose(0, 1)
+        return pred[:, eval_pos:].transpose(0, 1) # back to (L, B, d) shape
 
     @classmethod
     def load(cls, model_state, config):

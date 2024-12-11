@@ -61,4 +61,4 @@ Support for bf16 precision and flash-attention is enabled and used by default. A
 model = TabDPTClassifier(path='checkpoints/tabdpt_76M.ckpt', use_bf16=True, compile=False)
 ```
 
-On very large datasets with large evaluation, faiss search might become the bottleneck. In that case an approximate index (IVF, HNSW) 
+On very large datasets with large evaluation, faiss search might become the bottleneck. In that case an approximate index (IVF, HNSW) might be preferable.
