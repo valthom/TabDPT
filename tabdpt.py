@@ -77,8 +77,8 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
         for i in range(num_digits):
             y_train_digit = (y_train // (self.max_num_classes ** i)) % self.max_num_classes
             pred = self.model(
-                x_src=torch.cat([X_train, X_test], dim=0),
-                y_src=y_train_digit,
+                x_src=torch.cat([X_train, X_test], dim=1),
+                y_src=y_train_digit.unsqueeze(-1),
                 task='cls',
             )
             digit_preds.append(pred)
@@ -93,13 +93,14 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
 
         return full_pred
 
+    @torch.no_grad()
     def predict_proba(self, X: np.ndarray, temperature: float = 0.8, context_size: int = 128):
         train_x, train_y, test_x = self._prepare_prediction(X)
         
         if context_size >= self.n_instances:
-            X_train = pad_x(train_x[:, None, :], self.max_features).to(self.device)
-            X_test = pad_x(test_x[:, None, :], self.max_features).to(self.device)
-            y_train = train_y[:, None].float()
+            X_train = pad_x(train_x[None, :, :], self.max_features).to(self.device)
+            X_test = pad_x(test_x[None, :, :], self.max_features).to(self.device)
+            y_train = train_y[None, :].float()
             
             if self.num_classes <= self.max_num_classes:
                 pred = self.model(
@@ -124,30 +125,30 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
                 )
                 X_nni = train_x[torch.tensor(indices_nni)]
                 y_nni = train_y[torch.tensor(indices_nni)]
-                X_nni = np.swapaxes(X_nni, 0, 1)
-                y_nni = np.swapaxes(y_nni, 0, 1)
 
                 X_nni, y_nni = (
                     pad_x(torch.Tensor(X_nni), self.max_features).to(self.device),
                     torch.Tensor(y_nni).to(self.device),
                 )
                 X_eval = test_x[start:end]
-                X_eval = pad_x(X_eval.unsqueeze(0), self.max_features).to(self.device)
+                X_eval = pad_x(X_eval.unsqueeze(1), self.max_features).to(self.device)
                 
                 if self.num_classes <= self.max_num_classes:
                     pred = self.model(
-                        x_src=torch.cat([X_nni, X_eval], dim=0),
-                        y_src=y_nni,
+                        x_src=torch.cat([X_nni, X_eval], dim=1),
+                        y_src=y_nni.unsqueeze(-1),
                         task=self.mode,
                     )
                 else:
                     pred = self._predict_large_cls(X_nni, X_eval, y_nni)
 
+                
                 pred = pred[..., :self.num_classes] / temperature
                 pred = torch.nn.functional.softmax(pred, dim=-1)
 
                 pred_list.append(pred.squeeze())
 
+            
             return torch.cat(pred_list, dim=0).squeeze().detach().cpu().numpy()
         
     def predict(self, X, temperature: float = 0.8, context_size: int = 128):
@@ -158,18 +159,19 @@ class TabDPTRegressor(TabDPTEstimator, RegressorMixin):
     def __init__(self, path: str, inf_batch_size: int = 512, device: str = 'cuda:0'):
         super().__init__(path=path, mode='reg', inf_batch_size=inf_batch_size, device=device)
 
+    @torch.no_grad()
     def predict(self, X: np.ndarray, context_size: int = 128):
         train_x, train_y, test_x = self._prepare_prediction(X)
         if context_size >= self.n_instances:
-            X_train = pad_x(train_x[:, None, :], self.max_features).to(self.device)
-            X_test = pad_x(test_x[:, None, :], self.max_features).to(self.device)
-            y_train = train_y[:, None].float()
+            X_train = pad_x(train_x[None, :, :], self.max_features).to(self.device)
+            X_test = pad_x(test_x[None, :, :], self.max_features).to(self.device)
+            y_train = train_y[None, :].float()
             y_means = y_train.mean(dim=0)
             y_stds = y_train.std(dim=0) + 1e-6
             y_train = (y_train - y_means) / y_stds
             
             pred = self.model(
-                x_src=torch.cat([X_train, X_test], dim=0),
+                x_src=torch.cat([X_train, X_test], dim=1),
                 y_src=y_train,
                 task=self.mode,
             )
@@ -186,26 +188,19 @@ class TabDPTRegressor(TabDPTEstimator, RegressorMixin):
                 )
                 X_nni = train_x[torch.tensor(indices_nni)]
                 y_nni = train_y[torch.tensor(indices_nni)]
-                X_nni = np.swapaxes(X_nni, 0, 1)
-                y_nni = np.swapaxes(y_nni, 0, 1)
 
                 X_nni, y_nni = (
                     pad_x(torch.Tensor(X_nni), self.max_features).to(self.device),
                     torch.Tensor(y_nni).to(self.device),
                 )
                 X_eval = test_x[start:end]
-                X_eval = pad_x(X_eval.unsqueeze(0), self.max_features).to(self.device)
-                y_means = y_nni.mean(dim=0)
-                y_stds = y_nni.std(dim=0) + 1e-6
-                y_nni = (y_nni - y_means) / y_stds
+                X_eval = pad_x(X_eval.unsqueeze(1), self.max_features).to(self.device)
                 
                 pred = self.model(
-                    x_src=torch.cat([X_nni, X_eval], dim=0),
-                    y_src=y_nni,
+                    x_src=torch.cat([X_nni, X_eval], dim=1),
+                    y_src=y_nni.unsqueeze(-1),
                     task=self.mode,
                 )
-
-                pred = pred.squeeze() * y_stds + y_means
                 pred_list.append(pred)
 
             return torch.cat(pred_list).squeeze().detach().cpu().numpy()

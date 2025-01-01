@@ -10,30 +10,31 @@ def maskmean(x, mask, dim):
     return x.sum(dim=dim, keepdim=True) / mask.sum(dim=dim, keepdim=True)
 
 
-def maskstd(x, mask, dim=0):
+def maskstd(x, mask, dim=1):
     num = mask.sum(dim=dim, keepdim=True)
-    mean = maskmean(x, mask, dim=0)
+    mean = maskmean(x, mask, dim=dim)
     diffs = torch.where(mask, mean - x, 0)
-    return ((diffs**2).sum(dim=0, keepdim=True) / (num - 1)) ** 0.5
+    return ((diffs**2).sum(dim=dim, keepdim=True) / (num - 1)) ** 0.5
 
 
-def normalize_data(data, eval_pos):
-    X = data[:eval_pos] if eval_pos > 0 else data
+def normalize_data(data, eval_pos=-1, dim=1, return_mean_std: bool = False):
+    X = data[:, :eval_pos] if eval_pos > 0 else data
     mask = ~torch.isnan(X)
-    mean = maskmean(X, mask, dim=0)
-    std = maskstd(X, mask, dim=0) + 1e-6
+    mean = maskmean(X, mask, dim=dim)
+    std = maskstd(X, mask, dim=dim) + 1e-6
     data = (data - mean) / std
+    if return_mean_std:
+        return data, mean, std
     return data
 
 
-def clip_outliers(data, eval_pos, n_sigma=4):
-    assert len(data.shape) == 3, "X must be T,B,H"
-    X = data[:eval_pos] if eval_pos > 0 else data
+def clip_outliers(data, eval_pos=-1, n_sigma=4, dim=1):
+    X = data[:, :eval_pos] if eval_pos > 0 else data
     mask = ~torch.isnan(X)
-    mean = maskmean(X, mask, dim=0)
-    cutoff = n_sigma * maskstd(X, mask, dim=0)
+    mean = maskmean(X, mask, dim=dim)
+    cutoff = n_sigma * maskstd(X, mask, dim=dim)
     mask &= cutoff >= torch.abs(X - mean)
-    cutoff = n_sigma * maskstd(X, mask, dim=0)
+    cutoff = n_sigma * maskstd(X, mask, dim=dim)
     return torch.clip(data, mean - cutoff, mean + cutoff)
 
 
@@ -56,10 +57,10 @@ def convert_to_torch_tensor(input):
         raise TypeError("Input must be a NumPy array or a PyTorch tensor.")
 
 
-def pad_x(X, num_features):
-    seq_len, batch_size, n_features = X.shape
-    zero_feature_padding = torch.zeros((seq_len, batch_size, num_features - n_features), device=X.device)
-    return torch.cat([X, zero_feature_padding], -1)
+def pad_x(X: torch.Tensor, num_features=100):
+    n_features = X.shape[-1]
+    zero_feature_padding = torch.zeros((*X.shape[:-1], num_features - n_features), device=X.device)
+    return torch.cat([X, zero_feature_padding], dim=-1)
 
 
 class FAISS:
