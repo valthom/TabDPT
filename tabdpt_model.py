@@ -4,7 +4,10 @@ import torch
 import torch.nn as nn
 from torch.nn import TransformerEncoderLayer
 
-from utils import maskmean, maskstd, normalize_data, clip_outliers, seed_everything
+try:
+    from utils import maskmean, maskstd, normalize_data, clip_outliers, seed_everything
+except ImportError:
+    from .utils import maskmean, maskstd, normalize_data, clip_outliers, seed_everything
 
 
 class TabDPTModel(nn.Module):
