@@ -13,7 +13,7 @@ from utils import convert_to_torch_tensor, pad_x, FAISS, seed_everything
 
 
 class TabDPTEstimator(BaseEstimator):
-    def __init__(self, path: str, mode: str, inf_batch_size: int, device: str, use_flash: bool, compile: bool):
+    def __init__(self, path: str, mode: str = "cls", inf_batch_size: int = 512, device: str = 'cuda:0', use_bf16: bool = True, compile: bool = True):
         self.mode = mode
         self.inf_batch_size = inf_batch_size
         self.device = device
@@ -22,8 +22,9 @@ class TabDPTEstimator(BaseEstimator):
         self.model.eval()
         self.max_features = self.model.num_features
         self.max_num_classes = self.model.n_out
-        self.use_flash = use_flash
+        self.use_flash = use_bf16
         self.compile = compile
+        assert self.mode in ['cls', 'reg'], "mode must be 'cls' or 'reg'"
 
     def fit(self, X, y):
         assert isinstance(X, np.ndarray), "X must be a numpy array"
@@ -71,7 +72,7 @@ class TabDPTEstimator(BaseEstimator):
 
 class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
     def __init__(self, path: str, inf_batch_size: int = 512, device: str = 'cuda:0', use_bf16: bool = True, compile: bool = True):
-        super().__init__(path=path, mode='cls', inf_batch_size=inf_batch_size, device=device, use_flash=use_bf16, compile=compile)
+        super().__init__(path=path, mode='cls', inf_batch_size=inf_batch_size, device=device, use_bf16=use_bf16, compile=compile)
         
     def fit(self, X, y):
         super().fit(X, y)
@@ -112,24 +113,32 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
     @torch.no_grad()
     def predict_proba(self, X: np.ndarray, temperature: float = 0.8, context_size: int = 128):
         train_x, train_y, test_x = self._prepare_prediction(X)
-        
+
         if context_size >= self.n_instances:
             X_train = pad_x(train_x[None, :, :], self.max_features).to(self.device)
             X_test = pad_x(test_x[None, :, :], self.max_features).to(self.device)
             y_train = train_y[None, :].float()
             
             if self.num_classes <= self.max_num_classes:
-                pred = self.model(
-                    x_src=torch.cat([X_train, X_test], dim=0),
-                    y_src=y_train,
-                    task=self.mode,
-                )
+                if self.use_flash:
+                    with self.autocast, sdpa_kernel(SDPBackend.FLASH_ATTENTION):
+                        pred = self.model(
+                            x_src=torch.cat([X_train, X_test], dim=1),
+                            y_src=y_train.unsqueeze(-1),
+                            task=self.mode,
+                        )
+                else:
+                    pred = self.model(
+                        x_src=torch.cat([X_train, X_test], dim=1),
+                        y_src=y_train.unsqueeze(-1),
+                        task=self.mode,
+                    )
             else:
                 pred = self._predict_large_cls(X_train, X_test, y_train)
             
             pred = pred[..., :self.num_classes] / temperature
             pred = torch.nn.functional.softmax(pred, dim=-1)
-            return pred.squeeze(1).detach().cpu().numpy()
+            return pred.float().squeeze().detach().cpu().numpy()
         else:
             pred_list = []
             for b in range(math.ceil(len(self.X_test) / self.inf_batch_size)):
@@ -180,7 +189,7 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
 
 class TabDPTRegressor(TabDPTEstimator, RegressorMixin):
     def __init__(self, path: str, inf_batch_size: int = 512, device: str = 'cuda:0', use_bf16: bool = True, compile: bool = True):
-        super().__init__(path=path, mode='reg', inf_batch_size=inf_batch_size, device=device, use_flash=use_bf16, compile=compile)
+        super().__init__(path=path, mode='reg', inf_batch_size=inf_batch_size, device=device, use_bf16=use_bf16, compile=compile)
 
     @torch.no_grad()
     def predict(self, X: np.ndarray, context_size: int = 128):
@@ -189,25 +198,22 @@ class TabDPTRegressor(TabDPTEstimator, RegressorMixin):
             X_train = pad_x(train_x[None, :, :], self.max_features).to(self.device)
             X_test = pad_x(test_x[None, :, :], self.max_features).to(self.device)
             y_train = train_y[None, :].float()
-            y_means = y_train.mean(dim=0)
-            y_stds = y_train.std(dim=0) + 1e-6
-            y_train = (y_train - y_means) / y_stds
             
             if self.use_flash:
                 with self.autocast, sdpa_kernel(SDPBackend.FLASH_ATTENTION):
                     pred = self.model(
                         x_src=torch.cat([X_train, X_test], dim=1),
-                        y_src=y_train,
+                        y_src=y_train.unsqueeze(-1),
                         task=self.mode,
                     )
             else:
                 pred = self.model(
                     x_src=torch.cat([X_train, X_test], dim=1),
-                    y_src=y_train,
+                    y_src=y_train.unsqueeze(-1),
                     task=self.mode,
                 )
             
-            return (pred.float() * y_stds + y_means).squeeze().detach().cpu().numpy()
+            return pred.float().squeeze().detach().cpu().numpy()
         else:
             pred_list = []
             for b in range(math.ceil(len(self.X_test) / self.inf_batch_size)):
