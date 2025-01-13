@@ -1,9 +1,21 @@
+import os
+import random
+from functools import wraps
+
 import numpy as np
 import torch
-import random
-import os
 import faiss
+from torch.nn.attention import SDPBackend, sdpa_kernel
 
+def flash_context(func):
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        if getattr(self, "use_flash", False):
+            with torch.autocast(device_type='cuda', dtype=torch.bfloat16), sdpa_kernel(SDPBackend.FLASH_ATTENTION):
+                return func(self, *args, **kwargs)
+        else:
+            return func(self, *args, **kwargs)
+    return wrapper
 
 def maskmean(x, mask, dim):
     x = torch.where(mask, x, 0)

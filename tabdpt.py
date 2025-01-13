@@ -1,5 +1,4 @@
 import torch
-from torch.nn.attention import SDPBackend, sdpa_kernel
 import numpy as np
 import math
 import random
@@ -18,11 +17,10 @@ class TabDPTEstimator(BaseEstimator):
         self.inf_batch_size = inf_batch_size
         self.device = device
         checkpoint = torch.load(path)
-        self.model = TabDPTModel.load(model_state=checkpoint['model'], config=checkpoint['cfg'])
+        self.model = TabDPTModel.load(model_state=checkpoint['model'], config=checkpoint['cfg'], use_bf16=use_bf16)
         self.model.eval()
         self.max_features = self.model.num_features
         self.max_num_classes = self.model.n_out
-        self.use_flash = use_bf16
         self.compile = compile
         assert self.mode in ['cls', 'reg'], "mode must be 'cls' or 'reg'"
 
@@ -43,9 +41,6 @@ class TabDPTEstimator(BaseEstimator):
         self.X_train = X
         self.y_train = y
         self.is_fitted_ = True
-        if self.use_flash:
-            # half precision is required for flash attention
-            self.autocast = torch.autocast(device_type='cuda', dtype=torch.bfloat16)
         if self.compile:
             self.model = torch.compile(self.model)
         
@@ -85,19 +80,11 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
         digit_preds = []
         for i in range(num_digits):
             y_train_digit = (y_train // (self.max_num_classes ** i)) % self.max_num_classes
-            if self.use_flash:
-                with self.autocast, sdpa_kernel(SDPBackend.FLASH_ATTENTION):
-                    pred = self.model(
-                        x_src=torch.cat([X_train, X_test], dim=1),
-                        y_src=y_train_digit.unsqueeze(-1),
-                        task='cls',
-                    )
-            else:
-                pred = self.model(
-                    x_src=torch.cat([X_train, X_test], dim=1),
-                    y_src=y_train_digit.unsqueeze(-1),
-                    task='cls',
-                )
+            pred = self.model(
+                x_src=torch.cat([X_train, X_test], dim=1),
+                y_src=y_train_digit.unsqueeze(-1),
+                task='cls',
+            )
             digit_preds.append(pred.float())
 
         full_pred = torch.zeros((X_test.shape[0], X_test.shape[1], self.num_classes), device=X_train.device)
@@ -120,19 +107,11 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
             y_train = train_y[None, :].float()
             
             if self.num_classes <= self.max_num_classes:
-                if self.use_flash:
-                    with self.autocast, sdpa_kernel(SDPBackend.FLASH_ATTENTION):
-                        pred = self.model(
-                            x_src=torch.cat([X_train, X_test], dim=1),
-                            y_src=y_train.unsqueeze(-1),
-                            task=self.mode,
-                        )
-                else:
-                    pred = self.model(
-                        x_src=torch.cat([X_train, X_test], dim=1),
-                        y_src=y_train.unsqueeze(-1),
-                        task=self.mode,
-                    )
+                pred = self.model(
+                    x_src=torch.cat([X_train, X_test], dim=1),
+                    y_src=y_train.unsqueeze(-1),
+                    task=self.mode,
+                )
             else:
                 pred = self._predict_large_cls(X_train, X_test, y_train)
             
@@ -159,19 +138,11 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
                 X_eval = pad_x(X_eval.unsqueeze(1), self.max_features).to(self.device)
                 
                 if self.num_classes <= self.max_num_classes:
-                    if self.use_flash:
-                        with self.autocast, sdpa_kernel(SDPBackend.FLASH_ATTENTION):
-                            pred = self.model(
-                                x_src=torch.cat([X_nni, X_eval], dim=1),
-                                y_src=y_nni.unsqueeze(-1),
-                                task=self.mode,
-                            )
-                    else:
-                        pred = self.model(
-                            x_src=torch.cat([X_nni, X_eval], dim=1),
-                            y_src=y_nni.unsqueeze(-1),
-                            task=self.mode,
-                        )
+                    pred = self.model(
+                        x_src=torch.cat([X_nni, X_eval], dim=1),
+                        y_src=y_nni.unsqueeze(-1),
+                        task=self.mode,
+                    )
                 else:
                     pred = self._predict_large_cls(X_nni, X_eval, y_nni)
 
@@ -198,20 +169,11 @@ class TabDPTRegressor(TabDPTEstimator, RegressorMixin):
             X_train = pad_x(train_x[None, :, :], self.max_features).to(self.device)
             X_test = pad_x(test_x[None, :, :], self.max_features).to(self.device)
             y_train = train_y[None, :].float()
-            
-            if self.use_flash:
-                with self.autocast, sdpa_kernel(SDPBackend.FLASH_ATTENTION):
-                    pred = self.model(
-                        x_src=torch.cat([X_train, X_test], dim=1),
-                        y_src=y_train.unsqueeze(-1),
-                        task=self.mode,
-                    )
-            else:
-                pred = self.model(
-                    x_src=torch.cat([X_train, X_test], dim=1),
-                    y_src=y_train.unsqueeze(-1),
-                    task=self.mode,
-                )
+            pred = self.model(
+                x_src=torch.cat([X_train, X_test], dim=1),
+                y_src=y_train.unsqueeze(-1),
+                task=self.mode,
+            )
             
             return pred.float().squeeze().detach().cpu().numpy()
         else:
@@ -232,20 +194,11 @@ class TabDPTRegressor(TabDPTEstimator, RegressorMixin):
                 )
                 X_eval = test_x[start:end]
                 X_eval = pad_x(X_eval.unsqueeze(1), self.max_features).to(self.device)
-                
-                if self.use_flash:
-                    with self.autocast, sdpa_kernel(SDPBackend.FLASH_ATTENTION):
-                        pred = self.model(
-                            x_src=torch.cat([X_nni, X_eval], dim=1),
-                            y_src=y_nni.unsqueeze(-1),
-                            task=self.mode,
-                        )
-                else:
-                    pred = self.model(
-                        x_src=torch.cat([X_nni, X_eval], dim=1),
-                        y_src=y_nni.unsqueeze(-1),
-                        task=self.mode,
-                    )
+                pred = self.model(
+                    x_src=torch.cat([X_nni, X_eval], dim=1),
+                    y_src=y_nni.unsqueeze(-1),
+                    task=self.mode,
+                )
 
                 pred_list.append(pred)
 
