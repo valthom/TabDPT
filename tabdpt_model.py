@@ -45,7 +45,7 @@ class TabDPTModel(nn.Module):
                  norm_first: bool, num_features: int, use_bf16: bool, variance_estimation: bool = False):
         super().__init__()
         self.n_out = n_out
-        self.reg_var_head = nn.Sequential(nn.Linear(ninp, nhid), nn.GELU(), nn.Linear(nhid, 1)) if variance_estimation else None
+        self.reg_var_head = nn.Sequential(nn.Linear(ninp, nhid), nn.GELU(), nn.Linear(nhid, 1), torch.nn.Softplus()) if variance_estimation else None
         self.num_features = num_features
         self.encoder = nn.Linear(num_features, ninp)
         self.y_encoder = nn.Linear(1, ninp)
