@@ -41,9 +41,11 @@ class TransformerEncoderLayer(nn.Module):
         return x
 
 class TabDPTModel(nn.Module):
-    def __init__(self, dropout: float, n_out: int, nhead: int, nhid: int, ninp: int, nlayers: int, norm_first: bool, num_features: int, use_bf16: bool):
+    def __init__(self, dropout: float, n_out: int, nhead: int, nhid: int, ninp: int, nlayers: int, 
+                 norm_first: bool, num_features: int, use_bf16: bool, variance_estimation: bool = False):
         super().__init__()
         self.n_out = n_out
+        self.reg_var_head = nn.Sequential(nn.Linear(ninp, nhid), nn.GELU(), nn.Linear(nhid, 1)) if variance_estimation else None
         self.num_features = num_features
         self.encoder = nn.Linear(num_features, ninp)
         self.y_encoder = nn.Linear(1, ninp)
@@ -64,6 +66,7 @@ class TabDPTModel(nn.Module):
         x_src: torch.Tensor,
         y_src: torch.Tensor,
         task: Literal["cls", "reg"],  # classification or regression
+        output_reg_variance: bool = False,
     ) -> torch.Tensor:
         eval_pos = y_src.shape[1]
         x_src = normalize_data(x_src, -1 if self.training else eval_pos)
@@ -84,8 +87,6 @@ class TabDPTModel(nn.Module):
         y_src = self.y_encoder(y_src)
         train_x = x_src[:, :eval_pos] + y_src
         src = torch.cat([train_x, x_src[:, eval_pos:]], 1)
-        condition = torch.arange(src.shape[1]).to(src.device) >= eval_pos
-        attention_mask = condition.repeat(src.shape[1], 1)
 
         for layer in self.transformer_encoder:
             src = layer(src, eval_pos)
@@ -93,6 +94,10 @@ class TabDPTModel(nn.Module):
 
         if task == "reg":
             pred = pred * std_y + mean_y
+            
+        if task == "reg" and output_reg_variance and self.reg_var_head is not None:
+            pred_var = self.reg_var_head(src)
+            return pred[:, eval_pos:], pred_var[:, eval_pos:]
 
         return pred[:, eval_pos:]
 
