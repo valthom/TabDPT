@@ -40,12 +40,14 @@ class TransformerEncoderLayer(nn.Module):
         x = x + self.ff(self.ff_norm(x))
         return x
 
+
+
 class TabDPTModel(nn.Module):
     def __init__(self, dropout: float, n_out: int, nhead: int, nhid: int, ninp: int, nlayers: int, 
                  norm_first: bool, num_features: int, use_bf16: bool, variance_estimation: bool = False):
         super().__init__()
         self.n_out = n_out
-        self.reg_var_head = nn.Sequential(nn.Linear(ninp, nhid), nn.GELU(), nn.Linear(nhid, 1), torch.nn.Softplus()) if variance_estimation else None
+        self.reg_std_head = nn.Sequential(nn.Linear(ninp, nhid), nn.GELU(), nn.Linear(nhid, 1), torch.nn.Softplus()) if variance_estimation else None
         self.num_features = num_features
         self.encoder = nn.Linear(num_features, ninp)
         self.y_encoder = nn.Linear(1, ninp)
@@ -92,13 +94,12 @@ class TabDPTModel(nn.Module):
             src = layer(src, eval_pos)
         pred = self.task2head[task](src)
 
-        if task == "reg":
+        if task == "reg" and output_reg_variance and self.reg_std_head is not None:
+            cond_pred_std = self.reg_std_head(src) + 1
+            return pred[:, eval_pos:] * std_y + mean_y, cond_pred_std[:, eval_pos:] * std_y
+        elif task == "reg":
             pred = pred * std_y + mean_y
             
-        if task == "reg" and output_reg_variance and self.reg_var_head is not None:
-            pred_var = self.reg_var_head(src)
-            return pred[:, eval_pos:], pred_var[:, eval_pos:]
-
         return pred[:, eval_pos:]
 
     @classmethod
