@@ -8,11 +8,11 @@ To run `TabDPT`, install the following packages:
 - `scikit-learn`
 - `faiss`
 
-You need to also download the [weights below](#model-weights-download).
-
 ### Update December 2024
 Added support for flash attention (with bf16 precision) and compile flag. Both are enabled to True by default and should lead to a significant speed-up.
 
+### Update January 2025
+Weights are now stored on Git LFS, at the path `checkpoints/tabdpt_76M.ckpt`, instead of Google drive.
 
 ## Example Usage 1
 ```
@@ -46,10 +46,6 @@ model.fit(X_train, y_train)
 y_pred = model.predict(X_test, context_size=1024)
 print(r2_score(y_test, y_pred))
 ```
-
-## Model Weights Download
-
-[Download TabDPT 76M model weights](https://drive.google.com/file/d/1v-kAFXMaBWmK1Kk6hLaDDlckdYLTCfV1/view?usp=sharing)
 
 ## Roadmap
 - [ ] Release other model sizes
