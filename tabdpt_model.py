@@ -4,9 +4,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 try:
-    from utils import maskmean, maskstd, normalize_data, clip_outliers, seed_everything, flash_context
+    from utils import normalize_data, clip_outliers, flash_context
 except ImportError:
-    from .utils import maskmean, maskstd, normalize_data, clip_outliers, seed_everything, flash_context
+    from .utils import normalize_data, clip_outliers, flash_context
 
 class TransformerEncoderLayer(nn.Module):
     def __init__(self, embed_dim, num_heads, ff_dim):
