@@ -84,8 +84,6 @@ class TabDPTModel(nn.Module):
         y_src = self.y_encoder(y_src)
         train_x = x_src[:, :eval_pos] + y_src
         src = torch.cat([train_x, x_src[:, eval_pos:]], 1)
-        condition = torch.arange(src.shape[1]).to(src.device) >= eval_pos
-        attention_mask = condition.repeat(src.shape[1], 1)
 
         for layer in self.transformer_encoder:
             src = layer(src, eval_pos)
