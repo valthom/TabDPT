@@ -6,13 +6,14 @@ To run `TabDPT`, install the following packages:
 - `pytorch`
 - `numpy`
 - `scikit-learn`
-- `faiss`
+- `faiss-cpu`
+
+### Update January 2025
+Weights are now stored on Git LFS, at the path `checkpoints/tabdpt_76M.ckpt`, in addition to Google drive.
+Please do `git lfs pull` in order to get the latest weights inside `checkpoints` folder.
 
 ### Update December 2024
 Added support for flash attention (with bf16 precision) and compile flag. Both are enabled to True by default and should lead to a significant speed-up.
-
-### Update January 2025
-Weights are now stored on Git LFS, at the path `checkpoints/tabdpt_76M.ckpt`, instead of Google drive.
 
 ## Example Usage 1
 ```
