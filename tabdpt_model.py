@@ -41,7 +41,7 @@ class TransformerEncoderLayer(nn.Module):
         return x
 
 class TabDPTModel(nn.Module):
-    def __init__(self, dropout: float, n_out: int, nhead: int, nhid: int, ninp: int, nlayers: int, norm_first: bool, num_features: int, use_bf16: bool):
+    def __init__(self, dropout: float, n_out: int, nhead: int, nhid: int, ninp: int, nlayers: int, norm_first: bool, num_features: int, use_flash: bool):
         super().__init__()
         self.n_out = n_out
         self.num_features = num_features
@@ -56,7 +56,7 @@ class TabDPTModel(nn.Module):
                 for _ in range(nlayers)
             ]
         )
-        self.use_flash = torch.cuda.is_available() and use_bf16
+        self.use_flash = torch.cuda.is_available() and use_flash
 
     @flash_context
     def forward(
@@ -95,7 +95,7 @@ class TabDPTModel(nn.Module):
         return pred[:, eval_pos:]
 
     @classmethod
-    def load(cls, model_state, config, use_bf16):
+    def load(cls, model_state, config, use_flash):
         model = TabDPTModel(
             dropout=config['training']['dropout'],
             n_out=config['model']['max_num_classes'],
@@ -105,7 +105,7 @@ class TabDPTModel(nn.Module):
             nlayers=config['model']['nlayers'],
             norm_first=config['model']['norm_first'],
             num_features=config['model']['max_num_features'],
-            use_bf16=use_bf16
+            use_flash=use_flash
         )
 
         # Remove any module prefixes if necessary

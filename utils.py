@@ -11,7 +11,10 @@ def flash_context(func):
     @wraps(func)
     def wrapper(self, *args, **kwargs):
         if getattr(self, "use_flash", False):
-            with torch.autocast(device_type='cuda', dtype=torch.bfloat16), sdpa_kernel(SDPBackend.FLASH_ATTENTION):
+            assert torch.cuda.is_available(), "FlashAttention requires CUDA support"
+            bf_support = torch.cuda.get_device_capability()[0] >= 8
+            dtype = torch.bfloat16 if bf_support else torch.float16
+            with torch.autocast(device_type='cuda', dtype=dtype), sdpa_kernel(SDPBackend.FLASH_ATTENTION):
                 return func(self, *args, **kwargs)
         else:
             return func(self, *args, **kwargs)
