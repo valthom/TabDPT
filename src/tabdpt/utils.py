@@ -9,9 +9,11 @@ import faiss
 from torch.nn.attention import SDPBackend, sdpa_kernel
 
 def download_model():
-    temp_dir = tempfile.mkdtemp()
+    temp_dir = "/tmp/tabdpt_model"
     model_path = os.path.join(temp_dir, "tabdpt.pth")
-    os.system(f"gdown --id 1v-kAFXMaBWmK1Kk6hLaDDlckdYLTCfV1 -O {model_path}")
+    if not os.path.exists(temp_dir):
+        os.makedirs(temp_dir, exist_ok=True)
+        os.system(f"gdown --id 1v-kAFXMaBWmK1Kk6hLaDDlckdYLTCfV1 -O {model_path}")
     return model_path
 
 def flash_context(func):
