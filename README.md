@@ -2,6 +2,10 @@
 
 ## Installation
 ```
+pip install tabdpt
+```
+or
+```
 git clone git@github.com:layer6ai-labs/TabDPT.git
 cd TabDPT
 pip install -e .
