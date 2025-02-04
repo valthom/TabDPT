@@ -1,51 +1,31 @@
 # TabDPT: Scaling Tabular Foundation Models
 
 ## Installation
+```
+git clone git@github.com:layer6ai-labs/TabDPT.git
+cd TabDPT
+pip install -e .
+```
 
-To run `TabDPT`, install the following packages:
-- `pytorch`
-- `numpy`
-- `scikit-learn`
-- `faiss-cpu`
+## Example Usage 
+Please take a look at `tests/cls_example.py` and `tests/reg_example.py`
 
-### Update January 2025
+## Updates
+#### Update January 2025
 Weights are now stored on Git LFS, at the path `checkpoints/tabdpt_76M.ckpt`, in addition to Google drive.
 Please do `git lfs pull` in order to get the latest weights inside `checkpoints` folder.
 
-### Update December 2024
+#### Update December 2024
 Added support for flash attention (with bf16 precision) and compile flag. Both are enabled to True by default and should lead to a significant speed-up.
 
-## Example Usage 1
+## Citation
 ```
-from sklearn.metrics import accuracy_score
-from sklearn.datasets import load_breast_cancer
-from sklearn.model_selection import train_test_split
-from tabdpt import TabDPTClassifier
-
-X, y = load_breast_cancer(return_X_y=True)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
-
-model = TabDPTClassifier(path='checkpoints/tabdpt_76M.ckpt')
-model.fit(X_train, y_train)
-y_pred = model.predict(X_test, temperature=0.8, context_size=1024)
-print(accuracy_score(y_test, y_pred))
-```
-
-## Example Usage 2
-```
-from sklearn.metrics import accuracy_score
-from sklearn.datasets import fetch_california_housing
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import r2_score
-from tabdpt import TabDPTRegressor
-
-X, y = fetch_california_housing(return_X_y=True)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
-
-model = TabDPTRegressor(path='checkpoints/tabdpt_76M.ckpt')
-model.fit(X_train, y_train)
-y_pred = model.predict(X_test, context_size=1024)
-print(r2_score(y_test, y_pred))
+@article{ma2024tabdpt,
+  title={TabDPT: Scaling Tabular Foundation Models},
+  author={Ma, Junwei and Thomas, Valentin and Hosseinzadeh, Rasa and Kamkari, Hamidreza and Labach, Alex and Cresswell, Jesse C and Golestan, Keyvan and Yu, Guangwei and Volkovs, Maksims and Caterini, Anthony L},
+  journal={arXiv preprint arXiv:2410.18164},
+  year={2024}
+}
 ```
 
 ## Roadmap

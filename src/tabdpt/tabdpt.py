@@ -2,20 +2,24 @@ import torch
 import numpy as np
 import math
 import random
+
 from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
 from sklearn.utils.validation import check_is_fitted
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
-from tabdpt_model import TabDPTModel
-from utils import convert_to_torch_tensor, pad_x, FAISS, seed_everything
 
+from .tabdpt_model import TabDPTModel
+from .utils import convert_to_torch_tensor, pad_x, FAISS, seed_everything, download_model
 
 
 class TabDPTEstimator(BaseEstimator):
-    def __init__(self, path: str, mode: str = "cls", inf_batch_size: int = 512, device: str = 'cuda:0', use_flash: bool = True, compile: bool = True):
+    def __init__(self, path: str = '', mode: str = "cls", inf_batch_size: int = 512, device: str = 'cuda:0', use_flash: bool = True, compile: bool = True):
         self.mode = mode
         self.inf_batch_size = inf_batch_size
         self.device = device
+        # automatically download model weight if path is empty
+        if path == '':
+            path = download_model()
         checkpoint = torch.load(path)
         self.model = TabDPTModel.load(model_state=checkpoint['model'], config=checkpoint['cfg'], use_flash=use_flash)
         self.model.eval()
@@ -66,7 +70,7 @@ class TabDPTEstimator(BaseEstimator):
 
 
 class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
-    def __init__(self, path: str, inf_batch_size: int = 512, device: str = 'cuda:0', use_flash: bool = True, compile: bool = True):
+    def __init__(self, path: str = '', inf_batch_size: int = 512, device: str = 'cuda:0', use_flash: bool = True, compile: bool = True):
         super().__init__(path=path, mode='cls', inf_batch_size=inf_batch_size, device=device, use_flash=use_flash, compile=compile)
         
     def fit(self, X, y):
@@ -159,7 +163,7 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
     
 
 class TabDPTRegressor(TabDPTEstimator, RegressorMixin):
-    def __init__(self, path: str, inf_batch_size: int = 512, device: str = 'cuda:0', use_flash: bool = True, compile: bool = True):
+    def __init__(self, path: str = '', inf_batch_size: int = 512, device: str = 'cuda:0', use_flash: bool = True, compile: bool = True):
         super().__init__(path=path, mode='reg', inf_batch_size=inf_batch_size, device=device, use_flash=use_flash, compile=compile)
 
     @torch.no_grad()
