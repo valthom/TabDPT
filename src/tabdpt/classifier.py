@@ -1,9 +1,11 @@
 import numpy as np
+from tqdm import tqdm
+from scipy.special import softmax
 import torch
 import math
 from sklearn.base import ClassifierMixin
 from .estimator import TabDPTEstimator
-from .utils import pad_x
+from .utils import pad_x, generate_random_permutation
 
 
 class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
@@ -39,8 +41,13 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
         return full_pred
 
     @torch.no_grad()
-    def predict_proba(self, X: np.ndarray, temperature: float = 0.8, context_size: int = 128):
+    def predict_proba(self, X: np.ndarray, temperature: float = 0.8, context_size: int = 128, return_logits: bool = False, seed: int = None):
         train_x, train_y, test_x = self._prepare_prediction(X)
+        
+        if seed is not None:
+            feat_perm = generate_random_permutation(self.n_features, seed)
+            train_x = train_x[:, feat_perm]
+            test_x = test_x[:, feat_perm]
 
         if context_size >= self.n_instances:
             X_train = pad_x(train_x[None, :, :], self.max_features).to(self.device)
@@ -87,13 +94,30 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
                 else:
                     pred = self._predict_large_cls(X_nni, X_eval, y_nni)
 
-                pred = pred[..., :self.num_classes].float() / temperature
-                pred = torch.nn.functional.softmax(pred, dim=-1)
+                if not return_logits:
+                    pred = pred[..., :self.num_classes].float() / temperature
+                    pred = torch.nn.functional.softmax(pred, dim=-1)
 
                 pred_list.append(pred.squeeze())
 
-            
             return torch.cat(pred_list, dim=0).squeeze().detach().cpu().numpy()
         
-    def predict(self, X, temperature: float = 0.8, context_size: int = 128):
-        return self.predict_proba(X, temperature=temperature, context_size=context_size).argmax(axis=-1)
+    def ensemble_predict_proba(self, X, n_ensembles: int, temperature: float = 0.8, context_size: int = 128):
+        logits_cumsum = None
+        for i in tqdm(range(n_ensembles)):
+            seed = int(np.random.SeedSequence().generate_state(1)[0])
+            logits = self.predict_proba(X, context_size=context_size, return_logits=True, seed=seed)
+            if logits_cumsum is None:
+                logits_cumsum = logits
+            else:
+                logits_cumsum += logits
+        
+        pred = (logits_cumsum / n_ensembles)[..., :self.num_classes] / temperature
+        pred = softmax(pred, axis=-1)
+        return pred
+        
+    def predict(self, X, n_ensembles: int = 1, temperature: float = 0.8, context_size: int = 128, seed: int = None):
+        if n_ensembles == 1:
+            return self.predict_proba(X, temperature=temperature, context_size=context_size, seed=seed).argmax(axis=-1)
+        else:
+            return self.ensemble_predict_proba(X, n_ensembles=n_ensembles, temperature=temperature, context_size=context_size).argmax(axis=-1)

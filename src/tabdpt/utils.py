@@ -8,6 +8,13 @@ import torch
 import faiss
 from torch.nn.attention import SDPBackend, sdpa_kernel
 
+def generate_random_permutation(N, seed=None):
+    generator = torch.Generator()
+    if seed is not None:
+        generator.manual_seed(seed)
+    
+    return torch.randperm(N, generator=generator)
+
 def download_model():
     temp_dir = "/tmp/tabdpt_model"
     model_path = os.path.join(temp_dir, "tabdpt.pth")

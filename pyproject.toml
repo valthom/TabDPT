@@ -12,6 +12,8 @@ numpy = "*"
 scikit-learn = "*"
 faiss-cpu = "*"
 gdown = "*"
+tqdm = "*"
+scipy = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

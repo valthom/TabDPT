@@ -13,6 +13,7 @@ pip install -e .
 
 ## Example Usage 
 Please take a look at `tests/cls_example.py` and `tests/reg_example.py`
+For better performance, please increase `context_size` or increase `n_ensembles` to trade off speed and accuracy
 
 ## Updates
 #### Update January 2025

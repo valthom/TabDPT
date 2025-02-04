@@ -2,16 +2,24 @@ import math
 import torch
 import numpy as np
 from sklearn.base import RegressorMixin
+from tqdm import tqdm
+
 from .estimator import TabDPTEstimator
-from .utils import pad_x
+from .utils import pad_x, generate_random_permutation
 
 class TabDPTRegressor(TabDPTEstimator, RegressorMixin):
     def __init__(self, path: str = '', inf_batch_size: int = 512, device: str = 'cuda:0', use_flash: bool = True, compile: bool = True):
         super().__init__(path=path, mode='reg', inf_batch_size=inf_batch_size, device=device, use_flash=use_flash, compile=compile)
 
     @torch.no_grad()
-    def predict(self, X: np.ndarray, context_size: int = 128):
+    def _predict(self, X: np.ndarray, context_size: int = 128, seed=None):
         train_x, train_y, test_x = self._prepare_prediction(X)
+        
+        if seed is not None:
+            feat_perm = generate_random_permutation(self.n_features, seed)
+            train_x = train_x[:, feat_perm]
+            test_x = test_x[:, feat_perm]
+        
         if context_size >= self.n_instances:
             X_train = pad_x(train_x[None, :, :], self.max_features).to(self.device)
             X_test = pad_x(test_x[None, :, :], self.max_features).to(self.device)
@@ -50,3 +58,20 @@ class TabDPTRegressor(TabDPTEstimator, RegressorMixin):
                 pred_list.append(pred)
 
             return torch.cat(pred_list).squeeze().detach().cpu().numpy()
+
+    def _ensemble_predict(self, X: np.ndarray, n_ensembles: int, context_size: int = 128):
+        logits_cumsum = None
+        for i in tqdm(range(n_ensembles)):
+            seed = int(np.random.SeedSequence().generate_state(1)[0])
+            logits = self.predict(X, context_size=context_size, seed=seed)
+            if logits_cumsum is None:
+                logits_cumsum = logits
+            else:
+                logits_cumsum += logits
+        return logits_cumsum / n_ensembles
+    
+    def predict(self, X: np.ndarray, n_ensembles: int, context_size: int = 128, seed=None):
+        if n_ensembles == 1:
+            return self._predict(X, context_size=context_size, seed=seed)
+        else:
+            return self._ensemble_predict(X, n_ensembles=n_ensembles, context_size=context_size)
