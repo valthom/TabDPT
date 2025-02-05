@@ -70,7 +70,7 @@ class TabDPTRegressor(TabDPTEstimator, RegressorMixin):
                 logits_cumsum += logits
         return logits_cumsum / n_ensembles
     
-    def predict(self, X: np.ndarray, n_ensembles: int, context_size: int = 128, seed=None):
+    def predict(self, X: np.ndarray, n_ensembles: int = 1, context_size: int = 128, seed=None):
         if n_ensembles == 1:
             return self._predict(X, context_size=context_size, seed=seed)
         else:

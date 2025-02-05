@@ -65,7 +65,7 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
             
             pred = pred[..., :self.num_classes] / temperature
             pred = torch.nn.functional.softmax(pred, dim=-1)
-            return pred.float().squeeze().detach().cpu().numpy()
+            pred_val = pred.float().squeeze().detach().cpu().numpy()
         else:
             pred_list = []
             for b in range(math.ceil(len(self.X_test) / self.inf_batch_size)):
@@ -100,7 +100,9 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
 
                 pred_list.append(pred.squeeze())
 
-            return torch.cat(pred_list, dim=0).squeeze().detach().cpu().numpy()
+            pred_val = torch.cat(pred_list, dim=0).squeeze().detach().cpu().numpy()
+        pred_val /= pred_val.sum(axis=-1, keepdims=True) # numerical stability
+        return pred_val
         
     def ensemble_predict_proba(self, X, n_ensembles: int, temperature: float = 0.8, context_size: int = 128):
         logits_cumsum = None
@@ -114,6 +116,7 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
         
         pred = (logits_cumsum / n_ensembles)[..., :self.num_classes] / temperature
         pred = softmax(pred, axis=-1)
+        pred /= pred.sum(axis=-1, keepdims=True) # numerical stability
         return pred
         
     def predict(self, X, n_ensembles: int = 1, temperature: float = 0.8, context_size: int = 128, seed: int = None):
