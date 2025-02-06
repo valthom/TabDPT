@@ -16,7 +16,7 @@ class TabDPTRegressor(TabDPTEstimator, RegressorMixin):
         train_x, train_y, test_x = self._prepare_prediction(X)
         
         if seed is not None:
-            feat_perm = generate_random_permutation(self.n_features, seed)
+            feat_perm = generate_random_permutation(train_x.shape[1], seed)
             train_x = train_x[:, feat_perm]
             test_x = test_x[:, feat_perm]
         
