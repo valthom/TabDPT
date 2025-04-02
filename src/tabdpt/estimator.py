@@ -19,6 +19,7 @@ class TabDPTEstimator(BaseEstimator):
         if path == '':
             path = download_model()
         checkpoint = torch.load(path, map_location='cpu')
+        checkpoint['cfg']['env']['device'] = self.device
         self.model = TabDPTModel.load(model_state=checkpoint['model'], config=checkpoint['cfg'], use_flash=use_flash)
         self.model.eval()
         self.max_features = self.model.num_features
