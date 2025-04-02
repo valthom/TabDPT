@@ -20,7 +20,7 @@ def download_model():
     model_path = os.path.join(temp_dir, "tabdpt1_1.pth")
     if not os.path.exists(os.path.join(temp_dir, model_path)):
         os.makedirs(temp_dir, exist_ok=True)
-        os.system(f"gdown --id 12U4mXB4u3eSHZNfaC9jC9FmzJGqhfM7t -O {model_path}")
+        os.system(f"gdown --id 1ARFl7uQ6bwcpP9lTPqDv1_G0M3VDW3mI -O {model_path}")
     return model_path
 
 def flash_context(func):
