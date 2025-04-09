@@ -4,6 +4,7 @@ from scipy.special import softmax
 import torch
 import math
 from sklearn.base import ClassifierMixin
+
 from .estimator import TabDPTEstimator
 from .utils import pad_x, generate_random_permutation
 
@@ -11,15 +12,15 @@ from .utils import pad_x, generate_random_permutation
 class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
     def __init__(self, path: str = '', inf_batch_size: int = 512, device: str = 'cuda:0', use_flash: bool = True, compile: bool = True):
         super().__init__(path=path, mode='cls', inf_batch_size=inf_batch_size, device=device, use_flash=use_flash, compile=compile)
-        
+
     def fit(self, X, y):
         super().fit(X, y)
         self.num_classes = len(np.unique(self.y_train))
         assert self.num_classes > 1, "Number of classes must be greater than 1"
-        
+
     def _predict_large_cls(self, X_train, X_test, y_train):
         num_digits = math.ceil(math.log(self.num_classes, self.max_num_classes))
-        
+
         digit_preds = []
         for i in range(num_digits):
             y_train_digit = (y_train // (self.max_num_classes ** i)) % self.max_num_classes
@@ -43,7 +44,7 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
     @torch.no_grad()
     def predict_proba(self, X: np.ndarray, temperature: float = 0.8, context_size: int = 128, return_logits: bool = False, seed: int = None):
         train_x, train_y, test_x = self._prepare_prediction(X)
-        
+
         if seed is not None:
             feat_perm = generate_random_permutation(train_x.shape[1], seed)
             train_x = train_x[:, feat_perm]
@@ -53,7 +54,7 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
             X_train = pad_x(train_x[None, :, :], self.max_features).to(self.device)
             X_test = pad_x(test_x[None, :, :], self.max_features).to(self.device)
             y_train = train_y[None, :].float()
-            
+
             if self.num_classes <= self.max_num_classes:
                 pred = self.model(
                     x_src=torch.cat([X_train, X_test], dim=1),
@@ -62,7 +63,7 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
                 )
             else:
                 pred = self._predict_large_cls(X_train, X_test, y_train)
-            
+
             pred = pred[..., :self.num_classes] / temperature
             pred = torch.nn.functional.softmax(pred.float(), dim=-1)
             pred_val = pred.squeeze().detach().cpu().numpy()
@@ -84,7 +85,7 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
                 )
                 X_eval = test_x[start:end]
                 X_eval = pad_x(X_eval.unsqueeze(1), self.max_features).to(self.device)
-                
+
                 if self.num_classes <= self.max_num_classes:
                     pred = self.model(
                         x_src=torch.cat([X_nni, X_eval], dim=1),
@@ -103,7 +104,7 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
                 pred_list.append(pred.squeeze())
             pred_val = torch.cat(pred_list, dim=0).squeeze().detach().cpu().float().numpy()
         return pred_val
-        
+
     def ensemble_predict_proba(self, X, n_ensembles: int, temperature: float = 0.8, context_size: int = 128):
         logits_cumsum = None
         for i in tqdm(range(n_ensembles)):
@@ -113,12 +114,12 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
                 logits_cumsum = logits
             else:
                 logits_cumsum += logits
-        
+
         pred = (logits_cumsum / n_ensembles)[..., :self.num_classes] / temperature
         pred = softmax(pred, axis=-1)
         pred /= pred.sum(axis=-1, keepdims=True) # numerical stability
         return pred
-        
+
     def predict(self, X, n_ensembles: int = 1, temperature: float = 0.8, context_size: int = 128, seed: int = None):
         if n_ensembles == 1:
             return self.predict_proba(X, temperature=temperature, context_size=context_size, seed=seed).argmax(axis=-1)

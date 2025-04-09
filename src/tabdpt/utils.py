@@ -1,19 +1,19 @@
 import os
 import random
 from functools import wraps
-import tempfile
-
 import numpy as np
 import torch
 import faiss
 from torch.nn.attention import SDPBackend, sdpa_kernel
 
+
 def generate_random_permutation(N, seed=None):
     generator = torch.Generator()
     if seed is not None:
         generator.manual_seed(seed)
-    
+
     return torch.randperm(N, generator=generator)
+
 
 def download_model():
     temp_dir = "/tmp/tabdpt_model"
@@ -22,6 +22,7 @@ def download_model():
         os.makedirs(temp_dir, exist_ok=True)
         os.system(f"gdown --id 1ARFl7uQ6bwcpP9lTPqDv1_G0M3VDW3mI -O {model_path}")
     return model_path
+
 
 def flash_context(func):
     @wraps(func)
@@ -35,6 +36,7 @@ def flash_context(func):
         else:
             return func(self, *args, **kwargs)
     return wrapper
+
 
 def maskmean(x, mask, dim):
     x = torch.where(mask, x, 0)
@@ -88,7 +90,7 @@ def convert_to_torch_tensor(input):
         raise TypeError("Input must be a NumPy array or a PyTorch tensor.")
 
 
-def pad_x(X: torch.Tensor, num_features=100):
+def pad_x(X: torch.Tensor, num_features: int = 100):
     if num_features is None:
         return X
     n_features = X.shape[-1]

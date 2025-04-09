@@ -58,10 +58,8 @@ class TabDPTModel(nn.Module):
         if task == "reg":
             y_src, mean_y, std_y = normalize_data(y_src, return_mean_std=True)
             y_src = clip_outliers(y_src)
-        
+
         x_src = torch.nan_to_num(x_src, nan=0)
-
-
         x_src = self.encoder(x_src)
         mean = (x_src**2).mean(dim=-1, keepdim=True)
         rms = torch.sqrt(mean)
@@ -106,6 +104,7 @@ class TabDPTModel(nn.Module):
         model.to(config.env.device)
         model.eval()
         return model
+
 
 class RMSNorm(torch.nn.Module):
     def __init__(self, dim: int, eps: float = 1e-6):
