@@ -15,11 +15,11 @@ class TabDPTEstimator(BaseEstimator):
         self.mode = mode
         self.inf_batch_size = inf_batch_size
         self.device = device
-        self.path = path
         self.use_flash = use_flash
         # automatically download model weight if path is empty
         if path == '':
             path = download_model()
+        self.path = path
         checkpoint = torch.load(path, map_location='cpu', weights_only=False)
         checkpoint['cfg']['env']['device'] = self.device
         self.model = TabDPTModel.load(model_state=checkpoint['model'], config=checkpoint['cfg'], use_flash=use_flash)
