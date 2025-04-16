@@ -13,12 +13,10 @@ For better performance, please increase `context_size` or increase `n_ensembles`
 
 ## Updates
 
-#### Update April 2025 -- New Model
-We have improved the prediction performance of TabDPT through increased training stability.
+### Update April 2025: New Model
+**Version 1.1 is now available.** We have improved the prediction performance of TabDPT through increased training stability.
 
-**Version 1.1 is now available.**
-
-#### Update December 2024 -- Faster Inference
+### Update December 2024: Faster Inference
 Added support for flash attention (with bf16 precision) and compile flag. Both are enabled to True by default and should lead to a significant speed-up.
 
 ## Citation
