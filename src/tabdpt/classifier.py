@@ -10,8 +10,9 @@ from .utils import pad_x, generate_random_permutation
 
 
 class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
-    def __init__(self, path: str = '', inf_batch_size: int = 512, device: str = 'cuda:0', use_flash: bool = True, compile: bool = True):
-        super().__init__(path=path, mode='cls', inf_batch_size=inf_batch_size, device=device, use_flash=use_flash, compile=compile)
+    def __init__(self, path: str = TabDPTEstimator._DEFAULT_CHECKPOINT_PATH, inf_batch_size: int = 512,
+                 device: str = TabDPTEstimator._DEFAULT_DEVICE, use_flash: bool = True, compile: bool = True):
+        super().__init__(mode="cls", path=path, inf_batch_size=inf_batch_size, device=device, use_flash=use_flash, compile=compile)
 
     def fit(self, X, y):
         super().fit(X, y)
@@ -27,7 +28,7 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
             pred = self.model(
                 x_src=torch.cat([X_train, X_test], dim=1),
                 y_src=y_train_digit.unsqueeze(-1),
-                task='cls',
+                task=self.mode,
             )
             digit_preds.append(pred.float())
 
@@ -99,7 +100,7 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
                 if not return_logits:
                     pred = pred[..., :self.num_classes] / temperature
                     pred = torch.nn.functional.softmax(pred, dim=-1)
-                    pred /= pred.sum(axis=-1, keepdims=True) # numerical stability
+                    pred /= pred.sum(axis=-1, keepdims=True)  # numerical stability
 
                 pred_list.append(pred.squeeze())
             pred_val = torch.cat(pred_list, dim=0).squeeze().detach().cpu().float().numpy()
@@ -117,7 +118,7 @@ class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
 
         pred = (logits_cumsum / n_ensembles)[..., :self.num_classes] / temperature
         pred = softmax(pred, axis=-1)
-        pred /= pred.sum(axis=-1, keepdims=True) # numerical stability
+        pred /= pred.sum(axis=-1, keepdims=True)  # numerical stability
         return pred
 
     def predict(self, X, n_ensembles: int = 1, temperature: float = 0.8, context_size: int = 128, seed: int = None):

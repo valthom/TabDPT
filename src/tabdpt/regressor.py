@@ -9,8 +9,9 @@ from .utils import pad_x, generate_random_permutation
 
 
 class TabDPTRegressor(TabDPTEstimator, RegressorMixin):
-    def __init__(self, path: str = '', inf_batch_size: int = 512, device: str = 'cuda:0', use_flash: bool = True, compile: bool = True):
-        super().__init__(path=path, mode='reg', inf_batch_size=inf_batch_size, device=device, use_flash=use_flash, compile=compile)
+    def __init__(self, path: str = TabDPTEstimator._DEFAULT_CHECKPOINT_PATH, inf_batch_size: int = 512,
+                 device: str = TabDPTEstimator._DEFAULT_DEVICE, use_flash: bool = True, compile: bool = True):
+        super().__init__(mode="reg", path=path, inf_batch_size=inf_batch_size, device=device, use_flash=use_flash, compile=compile)
 
     @torch.no_grad()
     def _predict(self, X: np.ndarray, context_size: int = 128, seed=None):
