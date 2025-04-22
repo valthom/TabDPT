@@ -2,10 +2,6 @@
 
 ## Installation
 ```
-pip install tabdpt
-```
-or
-```
 git clone git@github.com:layer6ai-labs/TabDPT.git
 cd TabDPT
 pip install -e .
@@ -17,7 +13,10 @@ For better performance, please increase `context_size` or increase `n_ensembles`
 
 ## Updates
 
-#### Update December 2024
+### Update April 2025: New Model
+**Version 1.1 is now available.** We have improved the prediction performance of TabDPT through increased training stability.
+
+### Update December 2024: Faster Inference
 Added support for flash attention (with bf16 precision) and compile flag. Both are enabled to True by default and should lead to a significant speed-up.
 
 ## Citation
