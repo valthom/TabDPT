@@ -16,7 +16,7 @@ For better performance, please increase `context_size` or increase `n_ensembles`
 ### Update April 2025: New Model
 **Version 1.1 is now available.** We have improved the prediction performance of TabDPT through increased training stability.
 
-Weights are now stored on Git LFS, at the path `checkpoints/tabdpt_76M.ckpt`, in addition to Google drive.
+Weights are now stored on Git LFS, at the path `checkpoints/tabdpt1_1.pth`, in addition to Google drive.
 Please do `git lfs pull` in order to get the latest weights inside `checkpoints` folder.
 
 ### Update December 2024: Faster Inference
