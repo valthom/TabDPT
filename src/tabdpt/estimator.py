@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import os
 
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_is_fitted
@@ -11,23 +12,31 @@ from .utils import convert_to_torch_tensor, FAISS, download_model
 
 
 class TabDPTEstimator(BaseEstimator):
-    def __init__(self, path: str = '', mode: str = "cls", inf_batch_size: int = 512, device: str = 'cuda:0', use_flash: bool = True, compile: bool = True):
+    _DEFAULT_CHECKPOINT_PATH = "checkpoints/tabdpt1_1.pth"
+    _DEFAULT_DEVICE = "cuda:0"
+
+    def __init__(self, mode: str, path: str = _DEFAULT_CHECKPOINT_PATH, inf_batch_size: int = 512, device: str = _DEFAULT_DEVICE,
+                 use_flash: bool = True, compile: bool = True):
         self.mode = mode
         self.inf_batch_size = inf_batch_size
         self.device = device
         self.use_flash = use_flash
-        # automatically download model weight if path is empty
-        if path == '':
+
+        # automatically download model weight if path is not found
+        if not os.path.exists(path):
+            print(f"Path {path} does not exist in {os.getcwd()}.")
             path = download_model()
         self.path = path
-        checkpoint = torch.load(path, map_location='cpu', weights_only=False)
-        checkpoint['cfg']['env']['device'] = self.device
-        self.model = TabDPTModel.load(model_state=checkpoint['model'], config=checkpoint['cfg'], use_flash=use_flash)
+
+        checkpoint = torch.load(self.path, map_location=self.device, weights_only=False)
+        checkpoint["cfg"]["env"]["device"] = self.device
+        self.model = TabDPTModel.load(model_state=checkpoint["model"], config=checkpoint["cfg"], use_flash=use_flash)
         self.model.eval()
+
         self.max_features = self.model.num_features
         self.max_num_classes = self.model.n_out
         self.compile = compile
-        assert self.mode in ['cls', 'reg'], "mode must be 'cls' or 'reg'"
+        assert self.mode in ["cls", "reg"], "mode must be 'cls' or 'reg'"
 
     def fit(self, X, y):
         assert isinstance(X, np.ndarray), "X must be a numpy array"
@@ -36,7 +45,7 @@ class TabDPTEstimator(BaseEstimator):
         assert X.ndim == 2, "X must be a 2D array"
         assert y.ndim == 1, "y must be a 1D array"
 
-        self.imputer = SimpleImputer(strategy='mean')
+        self.imputer = SimpleImputer(strategy="mean")
         X = self.imputer.fit_transform(X)
         self.scaler = StandardScaler()
         X = self.scaler.fit_transform(X)
