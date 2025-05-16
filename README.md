@@ -2,7 +2,7 @@
 
 ## Installation
 ```
-git clone git@github.com:layer6ai-labs/TabDPT.git
+git clone -this repo-
 cd TabDPT
 pip install -e .
 ```
@@ -22,16 +22,4 @@ Please do `git lfs pull` in order to get the latest weights inside `checkpoints`
 ### Update December 2024: Faster Inference
 Added support for flash attention (with bf16 precision) and compile flag. Both are enabled to True by default and should lead to a significant speed-up.
 
-## Citation
 ```
-@article{ma2024tabdpt,
-  title={TabDPT: Scaling Tabular Foundation Models},
-  author={Ma, Junwei and Thomas, Valentin and Hosseinzadeh, Rasa and Kamkari, Hamidreza and Labach, Alex and Cresswell, Jesse C and Golestan, Keyvan and Yu, Guangwei and Volkovs, Maksims and Caterini, Anthony L},
-  journal={arXiv preprint arXiv:2410.18164},
-  year={2024}
-}
-```
-
-## Roadmap
-- [ ] Release other model sizes
-- [ ] Release training code
